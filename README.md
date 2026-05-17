@@ -519,6 +519,3 @@ Built as a comprehensive demonstration of:
 
 ---
 
-## 📜 License
-
-MIT License — free to use for academic and portfolio purposes.
