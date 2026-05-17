@@ -1,0 +1,206 @@
+{
+  "name": "Enterprise E-Commerce Data Pipeline",
+  "description": "Production-grade ETL pipeline simulating a real e-commerce data warehouse. Covers ingestion from raw sources (Kafka, S3, CRM), cleansing, enrichment, aggregation, and delivery to analytics sinks.",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "kafka_orders",
+      "name": "Kafka Order Events",
+      "type": "source",
+      "description": "Real-time order events from Kafka topic 'order-events'",
+      "tags": ["kafka", "realtime", "orders"],
+      "version": "v2.3"
+    },
+    {
+      "id": "s3_clickstream",
+      "name": "S3 Clickstream Logs",
+      "type": "source",
+      "description": "Web clickstream data from S3 landing zone (partitioned hourly)",
+      "tags": ["s3", "batch", "clickstream"]
+    },
+    {
+      "id": "crm_customers",
+      "name": "CRM Customer Data",
+      "type": "source",
+      "description": "Customer master data synced daily from Salesforce CRM",
+      "tags": ["crm", "salesforce", "customers"]
+    },
+    {
+      "id": "inventory_db",
+      "name": "Inventory Database",
+      "type": "source",
+      "description": "Product inventory data from PostgreSQL via CDC",
+      "tags": ["postgresql", "cdc", "inventory"]
+    },
+    {
+      "id": "returns_feed",
+      "name": "Returns Feed",
+      "type": "source",
+      "description": "Order return events from returns management system",
+      "tags": ["returns", "batch"]
+    },
+    {
+      "id": "parse_orders",
+      "name": "Parse & Validate Orders",
+      "type": "transformation",
+      "operation": "filter",
+      "description": "Schema validation + remove malformed/test orders",
+      "schema_info": {
+        "order_id":    {"type": "string",  "description": "Unique order identifier"},
+        "customer_id": {"type": "string",  "description": "FK to customer master"},
+        "total_amt":   {"type": "decimal", "description": "Order total in USD"},
+        "status":      {"type": "string",  "description": "Order status enum"},
+        "created_at":  {"type": "timestamp", "description": "Order creation time"}
+      }
+    },
+    {
+      "id": "parse_clickstream",
+      "name": "Parse Clickstream",
+      "type": "transformation",
+      "operation": "projection",
+      "description": "Extract relevant fields from raw clickstream JSON blobs"
+    },
+    {
+      "id": "dedupe_customers",
+      "name": "Deduplicate Customers",
+      "type": "transformation",
+      "operation": "deduplicate",
+      "description": "Remove duplicate customer records using email as dedup key"
+    },
+    {
+      "id": "sessionize",
+      "name": "Session Builder",
+      "type": "transformation",
+      "operation": "aggregation",
+      "description": "Group clickstream events into user sessions (30-min window)"
+    },
+    {
+      "id": "enrich_orders_customers",
+      "name": "Orders ⨝ Customers",
+      "type": "transformation",
+      "operation": "join",
+      "description": "Left join orders with customer data on customer_id",
+      "schema_info": {
+        "order_id":    {"type": "string"},
+        "customer_id": {"type": "string"},
+        "customer_name": {"type": "string", "source_col": "crm_customers.full_name"},
+        "segment":     {"type": "string",   "source_col": "crm_customers.segment"}
+      }
+    },
+    {
+      "id": "enrich_orders_products",
+      "name": "Orders ⨝ Products",
+      "type": "transformation",
+      "operation": "join",
+      "description": "Join with product catalog for category and margin info"
+    },
+    {
+      "id": "apply_returns",
+      "name": "Apply Returns Adjustment",
+      "type": "transformation",
+      "operation": "filter",
+      "description": "Subtract returned items from order totals"
+    },
+    {
+      "id": "revenue_by_day",
+      "name": "Revenue by Day",
+      "type": "transformation",
+      "operation": "aggregation",
+      "description": "Daily revenue aggregation by region and category"
+    },
+    {
+      "id": "customer_ltv",
+      "name": "Customer LTV Calculation",
+      "type": "transformation",
+      "operation": "aggregation",
+      "description": "Compute lifetime value per customer using historical orders"
+    },
+    {
+      "id": "funnel_analysis",
+      "name": "Conversion Funnel",
+      "type": "transformation",
+      "operation": "aggregation",
+      "description": "Session-to-order conversion funnel metrics"
+    },
+    {
+      "id": "product_affinity",
+      "name": "Product Affinity Matrix",
+      "type": "transformation",
+      "operation": "custom",
+      "description": "Co-purchase matrix for recommendation engine"
+    },
+    {
+      "id": "churn_features",
+      "name": "Churn Feature Engineering",
+      "type": "transformation",
+      "operation": "custom",
+      "description": "Feature extraction for churn prediction model (RFM + behavioral)"
+    },
+    {
+      "id": "orders_fact",
+      "name": "Orders Fact Table",
+      "type": "sink",
+      "description": "Dimensional fact table in Redshift data warehouse",
+      "tags": ["redshift", "dwh", "fact"]
+    },
+    {
+      "id": "revenue_dashboard",
+      "name": "Revenue Dashboard",
+      "type": "sink",
+      "description": "Tableau / PowerBI revenue dashboard dataset",
+      "tags": ["tableau", "bi"]
+    },
+    {
+      "id": "ltv_feature_store",
+      "name": "LTV Feature Store",
+      "type": "sink",
+      "description": "ML feature store (Feast) for LTV model training",
+      "tags": ["feast", "mlops"]
+    },
+    {
+      "id": "churn_model_input",
+      "name": "Churn Model Input",
+      "type": "sink",
+      "description": "Churn prediction model training dataset in S3",
+      "tags": ["s3", "mlops", "churn"]
+    },
+    {
+      "id": "rec_engine_input",
+      "name": "Recommendation Engine",
+      "type": "sink",
+      "description": "Product affinity matrix fed to collaborative filtering model",
+      "tags": ["recommendation", "mlops"]
+    },
+    {
+      "id": "funnel_report",
+      "name": "Funnel Analytics Report",
+      "type": "sink",
+      "description": "Marketing team funnel dashboard in Looker",
+      "tags": ["looker", "marketing"]
+    }
+  ],
+  "edges": [
+    {"from": "kafka_orders",     "to": "parse_orders",            "relationship_type": "produces"},
+    {"from": "s3_clickstream",   "to": "parse_clickstream",       "relationship_type": "produces"},
+    {"from": "crm_customers",    "to": "dedupe_customers",        "relationship_type": "produces"},
+    {"from": "parse_orders",     "to": "enrich_orders_customers", "relationship_type": "filters_into"},
+    {"from": "dedupe_customers", "to": "enrich_orders_customers", "relationship_type": "joined_with"},
+    {"from": "enrich_orders_customers", "to": "enrich_orders_products", "relationship_type": "enriched_by"},
+    {"from": "inventory_db",     "to": "enrich_orders_products",  "relationship_type": "joined_with"},
+    {"from": "enrich_orders_products", "to": "apply_returns",     "relationship_type": "filtered_by"},
+    {"from": "returns_feed",     "to": "apply_returns",           "relationship_type": "joined_with"},
+    {"from": "apply_returns",    "to": "revenue_by_day",          "relationship_type": "aggregated_into"},
+    {"from": "apply_returns",    "to": "customer_ltv",            "relationship_type": "aggregated_into"},
+    {"from": "apply_returns",    "to": "orders_fact",             "relationship_type": "written_to"},
+    {"from": "apply_returns",    "to": "product_affinity",        "relationship_type": "used_by"},
+    {"from": "apply_returns",    "to": "churn_features",          "relationship_type": "used_by"},
+    {"from": "parse_clickstream","to": "sessionize",              "relationship_type": "sessionized_into"},
+    {"from": "sessionize",       "to": "funnel_analysis",         "relationship_type": "analyzed_in"},
+    {"from": "sessionize",       "to": "churn_features",          "relationship_type": "used_by"},
+    {"from": "revenue_by_day",   "to": "revenue_dashboard",       "relationship_type": "powers"},
+    {"from": "customer_ltv",     "to": "ltv_feature_store",       "relationship_type": "written_to"},
+    {"from": "funnel_analysis",  "to": "funnel_report",           "relationship_type": "written_to"},
+    {"from": "product_affinity", "to": "rec_engine_input",        "relationship_type": "written_to"},
+    {"from": "churn_features",   "to": "churn_model_input",       "relationship_to": "written_to"}
+  ]
+}

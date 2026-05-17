@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data Lineage Generator</title>
+
+    <!-- Google Fonts: IBM Plex Sans + JetBrains Mono + Space Grotesk -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 0;
+        background: #0a0e1a;
+        color: #e2e8f0;
+        font-family: 'IBM Plex Sans', system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      /* Custom scrollbar for the dark theme */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: #0f1629; }
+      ::-webkit-scrollbar-thumb { background: #243050; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: #6366f1; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

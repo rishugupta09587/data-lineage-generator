@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+.env
+*.db
+*.sqlite3
+
+# Node
+node_modules/
+dist/
+build/
+.vite/
+
+# Testing
+.pytest_cache/
+*.egg-info/
+.coverage
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Logs
+*.log
